@@ -1,4 +1,5 @@
 import os
+import requests
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -16,13 +17,35 @@ MODELE = "gemini-3.5-flash"
 # ---------- LES OUTILS ----------
 
 def obtenir_meteo(ville: str) -> dict:
-    """Donne la température actuelle d'une ville."""
+    """Donne la température actuelle d'une ville, n'importe où dans le monde."""
     print(f"   [OUTIL] obtenir_meteo appelé avec ville={ville}")
-    fausses_donnees = {"paris": 12, "lyon": 9, "marseille": 17}
-    temperature = fausses_donnees.get(ville.lower())
-    if temperature is None:
-        return {"erreur": f"Ville inconnue : {ville}"}
-    return {"ville": ville, "temperature_celsius": temperature}
+
+    # Appel 1 : trouver les coordonnées GPS de la ville
+    rep_geo = requests.get(
+        "https://geocoding-api.open-meteo.com/v1/search",
+        params={"name": ville, "count": 1, "language": "fr"},
+        timeout=10,
+    )
+    rep_geo.raise_for_status()
+    villes = rep_geo.json().get("results")
+    if not villes:
+        return {"erreur": f"Ville introuvable : {ville}"}
+    lieu = villes[0]
+
+    # Appel 2 : obtenir la température à ces coordonnées
+    rep_meteo = requests.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params={
+            "latitude": lieu["latitude"],
+            "longitude": lieu["longitude"],
+            "current": "temperature_2m",
+        },
+        timeout=10,
+    )
+    rep_meteo.raise_for_status()
+    temperature = rep_meteo.json()["current"]["temperature_2m"]
+
+    return {"ville": lieu["name"], "pays": lieu.get("country"), "temperature_celsius": temperature}
 
 
 def statut_ticket(numero: str) -> dict:
@@ -48,8 +71,9 @@ config = types.GenerateContentConfig(
 
 questions = [
     "Quelle température fait-il à Lyon ?",
+    "Et à Tokyo, il fait combien ?",
+    "Quelle température fait-il à Zxqwville ?",
     "Où en est le ticket QA-101 ?",
-    "Quelle est la capitale de l'Italie ?",
 ]
 
 for question in questions:
