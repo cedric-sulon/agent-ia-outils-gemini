@@ -85,8 +85,9 @@ def appeler_ia(historique):
 
 # ---------- LA BOUCLE D'AGENT ----------
 
-def lancer_agent(question: str) -> str:
-    """Fait travailler l'agent sur une question jusqu'à obtenir une réponse finale."""
+def lancer_agent(question: str, outils_appeles: list | None = None) -> str:
+    """Fait travailler l'agent sur une question jusqu'à obtenir une réponse finale.
+    Si une liste outils_appeles est fournie, on y note le nom de chaque outil utilisé."""
     historique = [types.Content(role="user", parts=[types.Part(text=question)])]
 
     for tour in range(1, MAX_TOURS + 1):
@@ -101,6 +102,8 @@ def lancer_agent(question: str) -> str:
         historique.append(rep.candidates[0].content)
         resultats = []
         for appel in rep.function_calls:
+            if outils_appeles is not None:
+                outils_appeles.append(appel.name)
             resultat = OUTILS[appel.name](**appel.args)
             print(f"      [OUTIL] résultat : {resultat}")
             resultats.append(types.Part.from_function_response(name=appel.name, response=resultat))
