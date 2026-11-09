@@ -111,16 +111,19 @@ def lancer_agent(question: str) -> str:
 
 # ---------- LES TESTS ----------
 
-questions = [
-    "Compare la température de Paris et de Tokyo. Où fait-il le plus chaud ?",
-    "Il fait plus chaud à Lyon ou à Marseille ? Et le ticket QA-102 est-il terminé ?",
-    "Quelle est la capitale de l'Italie ?",
-]
+# ---------- DÉMONSTRATION (seulement si on lance ce fichier directement) ----------
 
-for question in questions:
-    print(f"\nQUESTION : {question}")
-    try:
-        reponse = lancer_agent(question)
-    except errors.APIError as e:
-        reponse = f"ÉCHEC : Google n'a pas pu répondre ({e.code}). Réessayer plus tard."
-    print(f"RÉPONSE  : {reponse}")
+if __name__ == "__main__":
+    questions = [
+        "Compare la température de Paris et de Tokyo. Où fait-il le plus chaud ?",
+        "Il fait plus chaud à Lyon ou à Marseille ? Et le ticket QA-102 est-il terminé ?",
+        "Quelle est la capitale de l'Italie ?",
+    ]
+
+    for question in questions:
+        print(f"\nQUESTION : {question}")
+        try:
+            reponse = lancer_agent(question)
+        except errors.APIError as e:
+            reponse = f"ÉCHEC : Google n'a pas pu répondre ({e.code}). Réessayer plus tard."
+        print(f"RÉPONSE  : {reponse}")
