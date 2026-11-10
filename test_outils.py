@@ -1,3 +1,5 @@
+import requests
+
 from premier_agent import statut_ticket, obtenir_meteo
 
 
@@ -29,3 +31,18 @@ def test_meteo_ville_connue():
 def test_meteo_ville_inconnue():
     resultat = obtenir_meteo("Zxqwville")
     assert "erreur" in resultat
+
+    
+
+def test_meteo_service_en_panne(monkeypatch):
+    def fausse_panne(*args, **kwargs):
+        raise requests.ConnectionError("API météo injoignable")
+
+    monkeypatch.setattr(requests, "get", fausse_panne)
+    resultat = obtenir_meteo("Lyon")
+    assert "erreur" in resultat
+
+
+def test_ticket_bloque():
+    resultat = statut_ticket("QA-103")
+    assert resultat["statut"] == "Bloqué"

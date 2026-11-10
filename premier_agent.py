@@ -22,6 +22,39 @@ def obtenir_meteo(ville: str) -> dict:
     """Donne la température actuelle d'une ville, n'importe où dans le monde."""
     print(f"      [OUTIL] obtenir_meteo appelé avec ville={ville}")
 
+    try:
+        # Appel 1 : trouver les coordonnées GPS de la ville
+        rep_geo = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": ville, "count": 1, "language": "fr"},
+            timeout=10,
+        )
+        rep_geo.raise_for_status()
+        villes = rep_geo.json().get("results")
+        if not villes:
+            return {"erreur": f"Ville introuvable : {ville}"}
+        lieu = villes[0]
+
+        # Appel 2 : obtenir la température à ces coordonnées
+        rep_meteo = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lieu["latitude"],
+                "longitude": lieu["longitude"],
+                "current": "temperature_2m",
+            },
+            timeout=10,
+        )
+        rep_meteo.raise_for_status()
+        temperature = rep_meteo.json()["current"]["temperature_2m"]
+
+    except requests.RequestException:
+        return {"erreur": "Service météo indisponible, réessayer plus tard"}
+
+    return {"ville": lieu["name"], "pays": lieu.get("country"), "temperature_celsius": temperature}
+    """Donne la température actuelle d'une ville, n'importe où dans le monde."""
+    print(f"      [OUTIL] obtenir_meteo appelé avec ville={ville}")
+
     rep_geo = requests.get(
         "https://geocoding-api.open-meteo.com/v1/search",
         params={"name": ville, "count": 1, "language": "fr"},
@@ -51,7 +84,7 @@ def obtenir_meteo(ville: str) -> dict:
 def statut_ticket(numero: str) -> dict:
     """Donne le statut d'un ticket Jira à partir de son numéro."""
     print(f"      [OUTIL] statut_ticket appelé avec numero={numero}")
-    faux_tickets = {"QA-101": "En cours", "QA-102": "Terminé"}
+    faux_tickets = {"QA-101": "En cours", "QA-102": "Terminé", "QA-103": "Bloqué"}
     statut = faux_tickets.get(numero.upper())
     if statut is None:
         return {"erreur": f"Ticket introuvable : {numero}"}
