@@ -1,8 +1,9 @@
 import os
+import time
 from typing import Literal
 from dotenv import load_dotenv
 from google import genai
-from google.genai import types
+from google.genai import types, errors
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -11,6 +12,7 @@ client = genai.Client(
     http_options=types.HttpOptions(timeout=60_000),
 )
 MODELE = "gemini-3.1-flash-lite"
+MAX_ESSAIS = 4
 
 
 # ---------- LE FORMULAIRE QUE L'IA DOIT REMPLIR ----------
@@ -25,19 +27,30 @@ class DemandeClient(BaseModel):
     )
 
 
-# ---------- L'APPEL À L'IA ----------
+# ---------- L'APPEL À L'IA, PROTÉGÉ CONTRE LES PANNES ----------
 
 def classer_demande(message: str) -> DemandeClient:
-    """Envoie une demande client à l'IA et récupère une fiche structurée et vérifiée."""
-    reponse = client.models.generate_content(
-        model=MODELE,
-        contents=f"Analyse cette demande client :\n\n{message}",
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=DemandeClient,
-        ),
-    )
-    return reponse.parsed
+    """Envoie une demande client à l'IA et récupère une fiche structurée et vérifiée.
+    Réessaie automatiquement si Google est surchargé (5xx) ou si on va trop vite (429)."""
+    attente = 5
+    for essai in range(1, MAX_ESSAIS + 1):
+        try:
+            reponse = client.models.generate_content(
+                model=MODELE,
+                contents=f"Analyse cette demande client :\n\n{message}",
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=DemandeClient,
+                ),
+            )
+            return reponse.parsed
+        except errors.APIError as e:
+            erreur_passagere = e.code == 429 or e.code >= 500
+            if not erreur_passagere or essai == MAX_ESSAIS:
+                raise
+            print(f"      [RETRY] Erreur passagère ({e.code}), essai {essai}/{MAX_ESSAIS}, attente {attente} s")
+            time.sleep(attente)
+            attente *= 2
 
 
 # ---------- DÉMONSTRATION ----------
