@@ -4,6 +4,7 @@ import requests
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types, errors
+from outil_devise import convertir_devise
 
 load_dotenv()
 
@@ -52,33 +53,6 @@ def obtenir_meteo(ville: str) -> dict:
         return {"erreur": "Service météo indisponible, réessayer plus tard"}
 
     return {"ville": lieu["name"], "pays": lieu.get("country"), "temperature_celsius": temperature}
-    """Donne la température actuelle d'une ville, n'importe où dans le monde."""
-    print(f"      [OUTIL] obtenir_meteo appelé avec ville={ville}")
-
-    rep_geo = requests.get(
-        "https://geocoding-api.open-meteo.com/v1/search",
-        params={"name": ville, "count": 1, "language": "fr"},
-        timeout=10,
-    )
-    rep_geo.raise_for_status()
-    villes = rep_geo.json().get("results")
-    if not villes:
-        return {"erreur": f"Ville introuvable : {ville}"}
-    lieu = villes[0]
-
-    rep_meteo = requests.get(
-        "https://api.open-meteo.com/v1/forecast",
-        params={
-            "latitude": lieu["latitude"],
-            "longitude": lieu["longitude"],
-            "current": "temperature_2m",
-        },
-        timeout=10,
-    )
-    rep_meteo.raise_for_status()
-    temperature = rep_meteo.json()["current"]["temperature_2m"]
-
-    return {"ville": lieu["name"], "pays": lieu.get("country"), "temperature_celsius": temperature}
 
 
 def statut_ticket(numero: str) -> dict:
@@ -91,10 +65,10 @@ def statut_ticket(numero: str) -> dict:
     return {"ticket": numero, "statut": statut}
 
 
-OUTILS = {"obtenir_meteo": obtenir_meteo, "statut_ticket": statut_ticket}
+OUTILS = {"obtenir_meteo": obtenir_meteo, "statut_ticket": statut_ticket, "convertir_devise": convertir_devise}
 
 config = types.GenerateContentConfig(
-    tools=[obtenir_meteo, statut_ticket],
+    tools=[obtenir_meteo, statut_ticket, convertir_devise],
     automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
 )
 
@@ -145,15 +119,12 @@ def lancer_agent(question: str, outils_appeles: list | None = None) -> str:
     return "ARRÊT DE SÉCURITÉ : trop de tours, l'agent n'a pas conclu."
 
 
-# ---------- LES TESTS ----------
-
 # ---------- DÉMONSTRATION (seulement si on lance ce fichier directement) ----------
 
 if __name__ == "__main__":
     questions = [
-        "Compare la température de Paris et de Tokyo. Où fait-il le plus chaud ?",
-        "Il fait plus chaud à Lyon ou à Marseille ? Et le ticket QA-102 est-il terminé ?",
-        "Quelle est la capitale de l'Italie ?",
+        "Combien font 250 euros en yens japonais ?",
+        "Je pars à Tokyo : quelle température fait-il là-bas, et combien valent 500 euros en yens ?",
     ]
 
     for question in questions:
